@@ -9,6 +9,8 @@ const Docker = require('dockerode');
 const { Client: SSHClient } = require('ssh2');
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
 
 dotenv.config();
 
@@ -42,6 +44,19 @@ db.exec(`
     category TEXT,
     color TEXT,
     notes TEXT
+  );
+  CREATE TABLE IF NOT EXISTS machines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    host TEXT NOT NULL,
+    port INTEGER DEFAULT 22,
+    username TEXT NOT NULL,
+    auth_method TEXT NOT NULL DEFAULT 'password',
+    password TEXT,
+    private_key TEXT,
+    passphrase TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 `);
 
@@ -146,7 +161,150 @@ app.post('/api/links', authenticateToken, (req, res) => {
   res.json({ id: info.lastInsertRowid });
 });
 
-// WebSocket for SSH Terminal — client supplies host/port/user/password (or key)
+const publicMachineSelect = `
+  SELECT id, name, host, port, username, auth_method AS authMethod, created_at AS createdAt, updated_at AS updatedAt
+  FROM machines
+`;
+
+app.get('/api/machines', authenticateToken, (req, res) => {
+  const rows = db.prepare(`${publicMachineSelect} ORDER BY name COLLATE NOCASE`).all();
+  res.json(rows);
+});
+
+app.post('/api/machines', authenticateToken, (req, res) => {
+  const {
+    name,
+    host,
+    port = 22,
+    username,
+    authMethod = 'password',
+    password,
+    privateKey,
+    passphrase,
+  } = req.body || {};
+
+  const cleanName = String(name || '').trim();
+  const cleanHost = String(host || '').trim();
+  const cleanUsername = String(username || '').trim();
+  const cleanAuthMethod = authMethod === 'key' ? 'key' : 'password';
+  const cleanPort = Number(port) || 22;
+
+  if (!cleanName || !cleanHost || !cleanUsername) {
+    return res.status(400).json({ error: 'Name, host, and username are required.' });
+  }
+  if (cleanAuthMethod === 'password' && !password) {
+    return res.status(400).json({ error: 'Password is required for password auth.' });
+  }
+  if (cleanAuthMethod === 'key' && !privateKey) {
+    return res.status(400).json({ error: 'Private key is required for key auth.' });
+  }
+
+  const info = db.prepare(`
+    INSERT INTO machines (name, host, port, username, auth_method, password, private_key, passphrase)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    cleanName,
+    cleanHost,
+    cleanPort,
+    cleanUsername,
+    cleanAuthMethod,
+    cleanAuthMethod === 'password' ? password : null,
+    cleanAuthMethod === 'key' ? privateKey : null,
+    cleanAuthMethod === 'key' ? (passphrase || null) : null
+  );
+
+  const machine = db.prepare(`${publicMachineSelect} WHERE id = ?`).get(info.lastInsertRowid);
+  res.status(201).json(machine);
+});
+
+app.delete('/api/machines/:id', authenticateToken, (req, res) => {
+  const info = db.prepare('DELETE FROM machines WHERE id = ?').run(req.params.id);
+  if (!info.changes) return res.status(404).json({ error: 'Machine not found.' });
+  res.json({ success: true });
+});
+
+let updateState = {
+  running: false,
+  lastStartedAt: null,
+  lastFinishedAt: null,
+  exitCode: null,
+  output: '',
+  error: null,
+};
+
+const updateCwd = process.env.HOMEBASE_UPDATE_CWD || path.resolve(__dirname, '..');
+const updateCommand = process.env.HOMEBASE_UPDATE_COMMAND || (
+  fs.existsSync(path.join(updateCwd, '.git')) ? 'git pull --ff-only' : ''
+);
+
+const getUpdateStatus = () => ({
+  ...updateState,
+  configured: Boolean(updateCommand),
+  cwd: updateCwd,
+});
+
+app.get('/api/system/update', authenticateToken, (req, res) => {
+  res.json(getUpdateStatus());
+});
+
+app.post('/api/system/update', authenticateToken, (req, res) => {
+  if (!updateCommand) {
+    return res.status(400).json({
+      error: 'Update command is not configured. Set HOMEBASE_UPDATE_COMMAND to enable one-click updates.',
+    });
+  }
+  if (updateState.running) {
+    return res.status(409).json({ error: 'An update is already running.' });
+  }
+
+  updateState = {
+    running: true,
+    lastStartedAt: new Date().toISOString(),
+    lastFinishedAt: null,
+    exitCode: null,
+    output: '',
+    error: null,
+  };
+
+  const child = spawn(updateCommand, {
+    cwd: updateCwd,
+    shell: true,
+    env: process.env,
+  });
+
+  const appendOutput = (chunk) => {
+    updateState.output = (updateState.output + chunk.toString()).slice(-12000);
+  };
+
+  child.stdout.on('data', appendOutput);
+  child.stderr.on('data', appendOutput);
+  child.on('error', (err) => {
+    updateState.running = false;
+    updateState.lastFinishedAt = new Date().toISOString();
+    updateState.error = err.message;
+  });
+  child.on('close', (code) => {
+    updateState.running = false;
+    updateState.lastFinishedAt = new Date().toISOString();
+    updateState.exitCode = code;
+    if (code !== 0 && !updateState.error) updateState.error = `Update exited with code ${code}.`;
+  });
+
+  res.status(202).json(getUpdateStatus());
+});
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error('Authentication required.'));
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return next(new Error('Invalid token.'));
+    socket.user = user;
+    next();
+  });
+});
+
+// WebSocket for SSH Terminal — browser selects a saved machine by id
 io.on('connection', (socket) => {
   let sshClient = null;
   let sshStream = null;
@@ -164,7 +322,23 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const { host, port, username, password, privateKey, passphrase, cols, rows } = creds || {};
+    const machine = creds?.machineId
+      ? db.prepare('SELECT * FROM machines WHERE id = ?').get(creds.machineId)
+      : null;
+
+    if (creds?.machineId && !machine) {
+      socket.emit('ssh-status', { type: 'error', message: 'Machine not found.' });
+      return;
+    }
+
+    const { cols, rows } = creds || {};
+    const host = machine?.host || creds?.host;
+    const port = machine?.port || creds?.port;
+    const username = machine?.username || creds?.username;
+    const password = machine ? machine.password : creds?.password;
+    const privateKey = machine ? machine.private_key : creds?.privateKey;
+    const passphrase = machine ? machine.passphrase : creds?.passphrase;
+
     if (!host || !username || (!password && !privateKey)) {
       socket.emit('ssh-status', { type: 'error', message: 'Missing required SSH credentials.' });
       return;

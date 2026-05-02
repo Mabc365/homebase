@@ -28,8 +28,9 @@ Homebase is a self-hosted operations center designed for high school students an
 
 ### 2. SSH Terminal
 - **Web-based SSH**: Embeds an interactive web-based SSH terminal using **xterm.js** on the frontend.
-- **Real Shell Session**: Backend uses **node-pty** (Node.js) and WebSockets to pipe a real shell session to the browser, connecting to the host machine (localhost).
-- **Reconnect Functionality**: Includes a "reconnect" button for dropped sessions.
+- **Saved Machines**: Store multiple SSH machines with host, port, username, and password or private-key authentication.
+- **Real Shell Session**: Backend uses `ssh2` and WebSockets to pipe a real remote SSH shell session to the browser.
+- **Reconnect Functionality**: Connect to any saved machine from the terminal page.
 - **Customizable Theme**: Dark terminal theme, monospace font, and full keyboard support.
 
 ### 3. Docker Container Manager
@@ -54,6 +55,11 @@ Homebase is a self-hosted operations center designed for high school students an
 - **Direct Access**: Clicking a card opens the URL in a new tab.
 - **CRUD Operations**: Add, edit, and delete links via a modal.
 - **Data Persistence**: Data is stored in the same SQLite database as the project board.
+
+### 6. System Updates
+- **One-click Update Button**: The System page can run a server-side update command and show recent command output.
+- **Git Pull Default**: When Homebase is run directly from a Git checkout, the default update command is `git pull --ff-only`.
+- **Custom Update Command**: Set `HOMEBASE_UPDATE_COMMAND` for Docker or custom deployments.
 
 ## Tech Stack
 
@@ -96,6 +102,22 @@ Homebase is designed for self-hosting using Docker and Docker Compose.
     ```
     Edit the `.env` file with your specific values:
     -   `JWT_SECRET`: A strong, random string for JWT signing.
+    -   `HOMEBASE_UPDATE_CWD`: Optional working directory for the update command.
+    -   `HOMEBASE_UPDATE_COMMAND`: Optional command run by the System > Update button.
+
+    Example for a direct Git checkout:
+    ```bash
+    HOMEBASE_UPDATE_CWD=/path/to/homebase
+    HOMEBASE_UPDATE_COMMAND=git pull --ff-only
+    ```
+
+    Example for a Docker Compose deployment from the host project directory:
+    ```bash
+    HOMEBASE_UPDATE_CWD=/path/to/homebase
+    HOMEBASE_UPDATE_COMMAND=git pull --ff-only && docker compose up --build -d
+    ```
+
+    The update command runs with the same permissions as the Homebase server process. Saved SSH machine credentials are stored in the SQLite database used by Homebase, so keep the database file private.
 
 3.  **Docker Socket Permissions**:
     The backend service needs access to the Docker daemon socket (`/var/run/docker.sock`) to manage containers. Ensure the user running Docker Compose has appropriate permissions. You might need to add your user to the `docker` group on your host machine:

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Terminal as TerminalIcon, Box, LogOut, User, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Terminal as TerminalIcon, Box, LogOut, User, Menu, X, Settings } from 'lucide-react';
 import axios from 'axios';
 import Overview from './pages/Overview';
 import Terminal from './pages/Terminal';
 import Docker from './pages/Docker';
 import Login from './pages/Login';
+import System from './pages/System';
 
 // Configure axios to include token in all requests
 axios.interceptors.request.use(
@@ -86,6 +87,7 @@ const Layout = ({ children }) => {
           <SidebarItem icon={LayoutDashboard} label="Overview" to="/" active={path === '/'} />
           <SidebarItem icon={TerminalIcon} label="Terminal" to="/terminal" active={path === '/terminal'} />
           <SidebarItem icon={Box} label="Docker" to="/docker" active={path === '/docker'} />
+          <SidebarItem icon={Settings} label="System" to="/system" active={path === '/system'} />
         </nav>
       </aside>
 
@@ -133,6 +135,7 @@ function App() {
           <Route path="/" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
           <Route path="/terminal" element={<ProtectedRoute><Terminal /></ProtectedRoute>} />
           <Route path="/docker" element={<ProtectedRoute><Docker /></ProtectedRoute>} />
+          <Route path="/system" element={<ProtectedRoute><System /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
