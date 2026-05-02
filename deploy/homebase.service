@@ -1,0 +1,26 @@
+[Unit]
+Description=Homebase backend (NAS dashboard API)
+After=network.target smbd.service nfs-kernel-server.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=homebase
+Group=homebase
+WorkingDirectory=/opt/homebase/server
+EnvironmentFile=-/opt/homebase/.env
+ExecStart=/usr/bin/node index.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening — keep the surface area small. The sudo entries in
+# /etc/sudoers.d/homebase-nas are the only privileged escape hatch.
+NoNewPrivileges=false
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

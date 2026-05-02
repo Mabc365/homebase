@@ -11,6 +11,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const nasRouter = require('./nas');
 
 dotenv.config();
 
@@ -138,6 +139,8 @@ app.post('/api/docker/action', authenticateToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.use('/api/nas', authenticateToken, nasRouter);
 
 app.get('/api/projects', authenticateToken, (req, res) => {
   const rows = db.prepare('SELECT * FROM projects').all();
