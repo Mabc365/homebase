@@ -10,7 +10,7 @@ const ProjectBoard = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await axios.get('http://localhost:3001/api/projects');
+        const res = await axios.get(`http://${window.location.hostname}:3001/api/projects`);
         setProjects(res.data);
       } catch (err) {
         console.error(err);

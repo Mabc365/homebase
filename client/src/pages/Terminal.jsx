@@ -25,7 +25,7 @@ const Terminal = () => {
     term.open(terminalRef.current);
     fitAddon.fit();
 
-    const socket = io('http://localhost:3001');
+    const socket = io(`http://${window.location.hostname}:3001`);
     socketRef.current = socket;
     xtermRef.current = term;
 

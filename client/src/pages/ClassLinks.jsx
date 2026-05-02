@@ -9,7 +9,7 @@ const ClassLinks = () => {
   useEffect(() => {
     const fetchLinks = async () => {
       try {
-        const res = await axios.get('http://localhost:3001/api/links');
+        const res = await axios.get(`http://${window.location.hostname}:3001/api/links`);
         setLinks(res.data);
       } catch (err) {
         console.error(err);
