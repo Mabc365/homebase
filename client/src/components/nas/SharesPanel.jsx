@@ -5,6 +5,7 @@ import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, withToast } from './util';
+import { PanelError, SkeletonGrid } from './PanelState';
 
 const emptyForm = {
   name: '', path: '', comment: '',
@@ -86,6 +87,7 @@ export default function SharesPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => axios.get('/api/nas/shares').then((r) => r.data),
   );
+  const shares = Array.isArray(data) ? data : [];
   const [editing, setEditing] = useState(null); // share or {} for new
   const [confirm, setConfirm] = useState(null);
 
@@ -138,12 +140,12 @@ export default function SharesPanel() {
         </button>
       )}
     >
-      {error && <div className="bg-red-500/10 border border-red-500/50 text-red-300 text-sm p-3 rounded-lg">{error.message}</div>}
-      {!data && !error && <p className="text-sm text-slate-500">Loading…</p>}
-      {data && data.length === 0 && <p className="text-sm text-slate-500">No shares defined.</p>}
-      {data && data.length > 0 && (
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {!data && !error && <SkeletonGrid count={3} columns="md:grid-cols-2 lg:grid-cols-3" />}
+      {data && shares.length === 0 && <p className="text-sm text-slate-500">No shares defined.</p>}
+      {shares.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {data.map((s) => (
+          {shares.map((s) => (
             <article key={s.name} className="bg-slate-800/50 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

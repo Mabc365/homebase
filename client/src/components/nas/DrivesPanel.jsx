@@ -5,6 +5,7 @@ import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, formatBytes, withToast } from './util';
+import { PanelError, SkeletonGrid } from './PanelState';
 
 function MountForm({ initial, onSubmit, onCancel }) {
   const [device, setDevice] = useState(initial?.device || '');
@@ -87,7 +88,8 @@ export default function DrivesPanel() {
   const [confirm, setConfirm] = useState(null);
 
   // Show only partitions and disks that have a filesystem (skip loop devices etc.)
-  const drives = (data || []).filter((d) => (d.type === 'part' || d.type === 'disk') && d.fstype);
+  const mounts = Array.isArray(data) ? data : [];
+  const drives = mounts.filter((d) => (d.type === 'part' || d.type === 'disk') && d.fstype);
 
   const handleMount = async (form) => {
     await withToast(axios.post('/api/nas/mounts/mount', form).then(refresh), {
@@ -121,8 +123,8 @@ export default function DrivesPanel() {
         </button>
       )}
     >
-      {error && <div className="bg-red-500/10 border border-red-500/50 text-red-300 text-sm p-3 rounded-lg mb-3">{error.message}</div>}
-      {!data && !error && <p className="text-sm text-slate-500">Loading…</p>}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {!data && !error && <SkeletonGrid count={2} columns="md:grid-cols-2" />}
       {drives.length === 0 && data && <p className="text-sm text-slate-500">No filesystems detected.</p>}
       {drives.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

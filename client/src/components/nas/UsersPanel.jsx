@@ -5,6 +5,7 @@ import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, withToast } from './util';
+import { PanelError, SkeletonRows } from './PanelState';
 
 function PasswordForm({ usernameLocked, initialUsername = '', onSubmit, onCancel }) {
   const [username, setUsername] = useState(initialUsername);
@@ -50,6 +51,7 @@ export default function UsersPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => axios.get('/api/nas/samba/users').then((r) => r.data),
   );
+  const users = Array.isArray(data) ? data : [];
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState(null);
   const [confirm, setConfirm] = useState(null);
@@ -91,12 +93,12 @@ export default function UsersPanel() {
         </button>
       )}
     >
-      {error && <div className="bg-red-500/10 border border-red-500/50 text-red-300 text-sm p-3 rounded-lg mb-3">{error.message}</div>}
-      {!data && !error && <p className="text-sm text-slate-500">Loading…</p>}
-      {data && data.length === 0 && <p className="text-sm text-slate-500">No Samba users defined.</p>}
-      {data && data.length > 0 && (
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {!data && !error && <SkeletonRows count={4} />}
+      {data && users.length === 0 && <p className="text-sm text-slate-500">No Samba users defined.</p>}
+      {users.length > 0 && (
         <ul className="divide-y divide-slate-800">
-          {data.map((u) => (
+          {users.map((u) => (
             <li key={u.username} className="flex items-center justify-between py-2">
               <div className="min-w-0">
                 <div className="text-sm text-white font-medium truncate">{u.username}</div>

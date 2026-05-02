@@ -5,6 +5,7 @@ import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, withToast } from './util';
+import { PanelError, SkeletonGrid } from './PanelState';
 
 const COMMON_OPTIONS = ['rw', 'ro', 'sync', 'async', 'no_subtree_check', 'subtree_check', 'root_squash', 'no_root_squash', 'all_squash', 'no_all_squash', 'secure', 'insecure'];
 
@@ -93,11 +94,13 @@ export default function ExportsPanel() {
   const { data: connections } = useAutoFetch(
     () => axios.get('/api/nas/nfs/connections').then((r) => r.data),
   );
+  const exportList = Array.isArray(exports) ? exports : [];
+  const connectionList = Array.isArray(connections) ? connections : [];
   const [editing, setEditing] = useState(null);
   const [confirm, setConfirm] = useState(null);
 
   const clientCounts = {};
-  (connections || []).forEach((c) => { clientCounts[c.export] = (clientCounts[c.export] || 0) + 1; });
+  connectionList.forEach((c) => { clientCounts[c.export] = (clientCounts[c.export] || 0) + 1; });
 
   const handleSubmit = async (form) => {
     const isEdit = Boolean(editing && editing.id);
@@ -147,12 +150,12 @@ export default function ExportsPanel() {
         </>
       )}
     >
-      {error && <div className="bg-red-500/10 border border-red-500/50 text-red-300 text-sm p-3 rounded-lg">{error.message}</div>}
-      {!exports && !error && <p className="text-sm text-slate-500">Loading…</p>}
-      {exports && exports.length === 0 && <p className="text-sm text-slate-500">No exports defined.</p>}
-      {exports && exports.length > 0 && (
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {!exports && !error && <SkeletonGrid count={2} columns="md:grid-cols-2" />}
+      {exports && exportList.length === 0 && <p className="text-sm text-slate-500">No exports defined.</p>}
+      {exportList.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {exports.map((e) => (
+          {exportList.map((e) => (
             <article key={e.id} className="bg-slate-800/50 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="text-white font-semibold font-mono text-sm break-all">{e.path}</h3>
@@ -161,7 +164,7 @@ export default function ExportsPanel() {
                 </span>
               </div>
               <div className="space-y-1">
-                {e.clients.map((c, i) => (
+                {(Array.isArray(e.clients) ? e.clients : []).map((c, i) => (
                   <div key={i} className="text-xs font-mono text-slate-300">
                     <span className="text-slate-500">{c.host}</span>
                     {c.options?.length > 0 && (

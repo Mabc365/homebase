@@ -7,6 +7,17 @@ import UsersPanel from '../components/nas/UsersPanel';
 import ServicesPanel from '../components/nas/ServicesPanel';
 import DrivesPanel from '../components/nas/DrivesPanel';
 import NetworkPanel from '../components/nas/NetworkPanel';
+import NasErrorBoundary from '../components/nas/NasErrorBoundary';
+
+const panels = [
+  ['Services', ServicesPanel],
+  ['Network', NetworkPanel],
+  ['Samba Shares', SharesPanel],
+  ['NFS Exports', ExportsPanel],
+  ['Active Connections', ConnectionsPanel],
+  ['Samba Users', UsersPanel],
+  ['Drives & Mounts', DrivesPanel],
+];
 
 export default function NAS() {
   return (
@@ -21,13 +32,11 @@ export default function NAS() {
         </div>
       </div>
 
-      <ServicesPanel />
-      <NetworkPanel />
-      <SharesPanel />
-      <ExportsPanel />
-      <ConnectionsPanel />
-      <UsersPanel />
-      <DrivesPanel />
+      {panels.map(([title, Component]) => (
+        <NasErrorBoundary key={title} title={title}>
+          <Component />
+        </NasErrorBoundary>
+      ))}
     </div>
   );
 }

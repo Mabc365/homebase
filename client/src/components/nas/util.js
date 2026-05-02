@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 export function formatBytes(bytes) {
@@ -35,35 +35,53 @@ export function useAutoFetch(fetcher, { intervalMs = 30000, enabled = true, deps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const mounted = useRef(true);
+  const fetcherRef = useRef(fetcher);
+  const requestSeq = useRef(0);
 
-  const refresh = async () => {
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
+  const refresh = useCallback(async () => {
+    if (!enabled) return;
+    const seq = requestSeq.current + 1;
+    requestSeq.current = seq;
     setLoading(true);
     try {
-      const res = await fetcher();
-      if (!mounted.current) return;
+      const res = await fetcherRef.current();
+      if (requestSeq.current !== seq) return;
       setData(res);
       setError(null);
       setLastUpdated(new Date());
     } catch (err) {
-      if (!mounted.current) return;
+      if (requestSeq.current !== seq) return;
       setError(err);
     } finally {
-      if (mounted.current) setLoading(false);
+      if (requestSeq.current === seq) setLoading(false);
     }
-  };
+  }, [enabled]);
 
   useEffect(() => {
-    mounted.current = true;
-    if (!enabled) return undefined;
+    if (!enabled) {
+      requestSeq.current += 1;
+      setLoading(false);
+      return undefined;
+    }
     refresh();
-    if (!intervalMs) return () => { mounted.current = false; };
+    if (!intervalMs) return () => { requestSeq.current += 1; };
     const id = setInterval(refresh, intervalMs);
-    return () => { mounted.current = false; clearInterval(id); };
+    return () => {
+      requestSeq.current += 1;
+      clearInterval(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, intervalMs, ...deps]);
 
   return { data, loading, error, refresh, lastUpdated };
+}
+
+export function getErrorMessage(error) {
+  return error?.response?.data?.error || error?.message || String(error || 'Unknown error');
 }
 
 // Wrap a promise-returning action with toast feedback.

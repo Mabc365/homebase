@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Server, Play, Square, RotateCw } from 'lucide-react';
 import Panel from './Panel';
 import { useAutoFetch, formatUptime, withToast } from './util';
+import { PanelError, SkeletonGrid } from './PanelState';
 
 const STATE_COLORS = {
   active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
@@ -16,6 +17,7 @@ export default function ServicesPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => axios.get('/api/nas/services').then((r) => r.data),
   );
+  const services = Array.isArray(data) ? data : [];
 
   const action = async (svc, act) => {
     await withToast(
@@ -24,8 +26,8 @@ export default function ServicesPanel() {
     );
   };
 
-  const overall = data && data.every((s) => s.activeState === 'active') ? 'ok'
-    : data && data.some((s) => s.activeState === 'failed') ? 'error'
+  const overall = data && services.every((s) => s.activeState === 'active') ? 'ok'
+    : data && services.some((s) => s.activeState === 'failed') ? 'error'
     : data ? 'warn' : 'idle';
 
   return (
@@ -37,9 +39,12 @@ export default function ServicesPanel() {
       loading={loading}
       onRefresh={refresh}
     >
-      {error && <div className="bg-red-500/10 border border-red-500/50 text-red-300 text-sm p-3 rounded-lg mb-3">{error.message}</div>}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {(data || []).map((s) => (
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {!data && !error && <SkeletonGrid count={3} columns="md:grid-cols-3" />}
+      {data && services.length === 0 && <p className="text-sm text-slate-500">No NAS services reported.</p>}
+      {services.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {services.map((s) => (
           <article key={s.name} className="bg-slate-800/50 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -67,8 +72,9 @@ export default function ServicesPanel() {
               </button>
             </div>
           </article>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Panel>
   );
 }

@@ -4,6 +4,7 @@ import { Activity, X } from 'lucide-react';
 import Panel from './Panel';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, timeAgo, withToast } from './util';
+import { PanelError, SkeletonRows } from './PanelState';
 
 function Tabs({ value, onChange, items }) {
   return (
@@ -53,6 +54,8 @@ export default function ConnectionsPanel() {
   const refresh = () => { samba.refresh(); nfs.refresh(); };
   const lastUpdated = [samba.lastUpdated, nfs.lastUpdated].filter(Boolean).sort((a, b) => b - a)[0];
   const error = samba.error || nfs.error;
+  const sambaConnections = Array.isArray(samba.data) ? samba.data : [];
+  const nfsConnections = Array.isArray(nfs.data) ? nfs.data : [];
 
   const requestDisconnect = (conn) => setConfirm({
     title: `Disconnect ${conn.user || conn.host}?`,
@@ -69,7 +72,7 @@ export default function ConnectionsPanel() {
     { key: 'user', label: 'User' },
     { key: 'host', label: 'Host' },
     { key: 'ip', label: 'IP' },
-    { key: 'shares', label: 'Shares', render: (r) => r.shares.join(', ') || '—' },
+    { key: 'shares', label: 'Shares', render: (r) => (Array.isArray(r.shares) ? r.shares.join(', ') : '') || '—' },
     { key: 'connected', label: 'Connected', render: (r) => timeAgo(r.connectedAt) },
     { key: 'openFiles', label: 'Open Files' },
     {
@@ -92,7 +95,7 @@ export default function ConnectionsPanel() {
       icon={Activity}
       title="Active Connections"
       subtitle={lastUpdated ? `updated ${lastUpdated.toLocaleTimeString()}` : 'loading…'}
-      status={error ? 'error' : 'ok'}
+      status={error ? 'error' : (samba.data || nfs.data ? 'ok' : 'idle')}
       loading={samba.loading || nfs.loading}
       onRefresh={refresh}
     >
@@ -103,18 +106,20 @@ export default function ConnectionsPanel() {
           { value: 'nfs', label: `NFS (${nfs.data?.length || 0})` },
         ]}
       />
-      {error && <div className="bg-red-500/10 border border-red-500/50 text-red-300 text-sm p-3 rounded-lg mb-3">{error.message}</div>}
-      {tab === 'samba' && (
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {tab === 'samba' && !samba.data && !samba.error && <SkeletonRows count={4} />}
+      {tab === 'samba' && (samba.data || samba.error) && (
         <Table
           columns={sambaColumns}
-          rows={(samba.data || []).map((s) => ({ ...s, key: s.pid }))}
+          rows={sambaConnections.map((s) => ({ ...s, key: s.pid }))}
           empty="No active Samba connections."
         />
       )}
-      {tab === 'nfs' && (
+      {tab === 'nfs' && !nfs.data && !nfs.error && <SkeletonRows count={3} />}
+      {tab === 'nfs' && (nfs.data || nfs.error) && (
         <Table
           columns={nfsColumns}
-          rows={(nfs.data || []).map((c, i) => ({ ...c, key: `${c.host}-${c.export}-${i}` }))}
+          rows={nfsConnections.map((c, i) => ({ ...c, key: `${c.host}-${c.export}-${i}` }))}
           empty="No active NFS clients."
         />
       )}
