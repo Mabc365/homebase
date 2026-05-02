@@ -10,6 +10,11 @@ import Login from './pages/Login';
 import System from './pages/System';
 import NAS from './pages/NAS';
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+  || (window.location.port === '5173' ? `http://${window.location.hostname}:3001` : '');
+
+axios.defaults.baseURL = apiBaseUrl;
+
 // Configure axios to include token in all requests
 axios.interceptors.request.use(
   (config) => {

@@ -1,13 +1,13 @@
 import React from 'react';
-import axios from 'axios';
 import { Network } from 'lucide-react';
 import Panel from './Panel';
 import { useAutoFetch } from './util';
 import { PanelError, SkeletonGrid } from './PanelState';
+import { nasApi } from './api';
 
 export default function NetworkPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
-    () => axios.get('/api/nas/network').then((r) => r.data),
+    () => nasApi.get('/api/nas/network'),
   );
   const interfaces = Array.isArray(data?.interfaces) ? data.interfaces : [];
   const visibleInterfaces = interfaces.filter((i) => !i.internal);

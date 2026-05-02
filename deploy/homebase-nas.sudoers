@@ -1,46 +1,18 @@
 # /etc/sudoers.d/homebase-nas
-# Granular sudo entries for the homebase backend, restricted to the exact
-# commands the NAS module shells out to. Replace `homebase` with the actual
-# Linux user that runs the homebase server (see deploy/homebase.service).
-#
+# Replace `homebase` with the Linux user that runs the backend service.
 # Install with:
+#   sudo install -Dm755 deploy/homebase-nas-helper /usr/local/sbin/homebase-nas-helper
 #   sudo install -m 0440 deploy/homebase-nas.sudoers /etc/sudoers.d/homebase-nas
-#   sudo visudo -cf /etc/sudoers.d/homebase-nas    # validate
+#   sudo visudo -cf /etc/sudoers.d/homebase-nas
 
-# --- service control (start/stop/restart only the NAS-relevant units) ---
-homebase ALL=(root) NOPASSWD: /bin/systemctl start smbd, \
-                              /bin/systemctl stop smbd, \
-                              /bin/systemctl restart smbd, \
-                              /bin/systemctl start nmbd, \
-                              /bin/systemctl stop nmbd, \
-                              /bin/systemctl restart nmbd, \
-                              /bin/systemctl start nfs-kernel-server, \
-                              /bin/systemctl stop nfs-kernel-server, \
-                              /bin/systemctl restart nfs-kernel-server
+# Controlled privileged actions. The helper validates its own action allowlist,
+# services, paths, mount roots, and Samba PIDs before doing any write/action.
+homebase ALL=(root) NOPASSWD: /usr/local/sbin/homebase-nas-helper *
 
-# --- samba config + user management ---
-homebase ALL=(root) NOPASSWD: /bin/cat /etc/samba/smb.conf, \
-                              /bin/cp -f /etc/samba/smb.conf /etc/samba/smb.conf.homebase.bak, \
-                              /usr/bin/tee /etc/samba/smb.conf, \
-                              /usr/bin/smbcontrol smbd reload-config, \
+# Read-only/status commands used by discovery and health checks.
+homebase ALL=(root) NOPASSWD: /usr/bin/cat /etc/samba/smb.conf, \
+                              /usr/bin/cat /etc/exports, \
                               /usr/bin/smbstatus, \
                               /usr/bin/smbstatus --json, \
                               /usr/bin/pdbedit -L, \
-                              /usr/bin/smbpasswd -s *, \
-                              /usr/bin/smbpasswd -s -a *, \
-                              /usr/bin/smbpasswd -x *
-
-# --- nfs exports management ---
-homebase ALL=(root) NOPASSWD: /bin/cat /etc/exports, \
-                              /usr/bin/tee /etc/exports, \
-                              /usr/sbin/exportfs -ra, \
                               /usr/sbin/showmount -a --no-headers
-
-# --- mount management ---
-homebase ALL=(root) NOPASSWD: /bin/mkdir -p /mnt/*, \
-                              /bin/mkdir -p /media/*, \
-                              /bin/mount *, \
-                              /bin/umount *
-
-# --- disconnect samba sessions (kill smbd workers by PID) ---
-homebase ALL=(root) NOPASSWD: /bin/kill *

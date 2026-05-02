@@ -81,14 +81,16 @@ export function useAutoFetch(fetcher, { intervalMs = 30000, enabled = true, deps
 }
 
 export function getErrorMessage(error) {
-  return error?.response?.data?.error || error?.message || String(error || 'Unknown error');
+  const body = error?.response?.data;
+  if (body?.error && body?.details) return `${body.error} ${typeof body.details === 'string' ? body.details : JSON.stringify(body.details)}`;
+  return body?.error || error?.message || String(error || 'Unknown error');
 }
 
 // Wrap a promise-returning action with toast feedback.
 export async function withToast(promise, { loading, success, error }) {
   return toast.promise(
     promise.then((v) => v).catch((err) => {
-      const msg = err?.response?.data?.error || err?.message || String(err);
+      const msg = getErrorMessage(err);
       throw new Error(msg);
     }),
     { loading, success, error: (err) => `${error}: ${err.message}` },

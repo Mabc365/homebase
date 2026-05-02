@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Share2, Plus, Pencil, Trash2, RotateCw } from 'lucide-react';
 import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, withToast } from './util';
 import { PanelError, SkeletonGrid } from './PanelState';
+import { nasApi } from './api';
 
 const COMMON_OPTIONS = ['rw', 'ro', 'sync', 'async', 'no_subtree_check', 'subtree_check', 'root_squash', 'no_root_squash', 'all_squash', 'no_all_squash', 'secure', 'insecure'];
 
@@ -89,10 +89,10 @@ function ExportForm({ initial, onSubmit, onCancel, isEdit }) {
 
 export default function ExportsPanel() {
   const { data: exports, loading, refresh, error, lastUpdated } = useAutoFetch(
-    () => axios.get('/api/nas/exports').then((r) => r.data),
+    () => nasApi.get('/api/nas/nfs/exports'),
   );
   const { data: connections } = useAutoFetch(
-    () => axios.get('/api/nas/nfs/connections').then((r) => r.data),
+    () => nasApi.get('/api/nas/nfs/connections'),
   );
   const exportList = Array.isArray(exports) ? exports : [];
   const connectionList = Array.isArray(connections) ? connections : [];
@@ -104,9 +104,9 @@ export default function ExportsPanel() {
 
   const handleSubmit = async (form) => {
     const isEdit = Boolean(editing && editing.id);
-    const url = isEdit ? `/api/nas/exports/${editing.id}` : '/api/nas/exports';
+    const url = isEdit ? `/api/nas/nfs/exports/${editing.id}` : '/api/nas/nfs/exports';
     const method = isEdit ? 'put' : 'post';
-    await withToast(axios[method](url, form).then(refresh), {
+    await withToast(nasApi[method](url, form).then(refresh), {
       loading: isEdit ? 'Saving export…' : 'Creating export…',
       success: isEdit ? 'Export updated' : 'Export created',
       error: 'Failed',
@@ -118,7 +118,7 @@ export default function ExportsPanel() {
     title: `Delete export "${e.path}"?`,
     message: 'This removes the line from /etc/exports and runs exportfs -ra.',
     onConfirm: async () => {
-      await withToast(axios.delete(`/api/nas/exports/${e.id}`).then(refresh), {
+      await withToast(nasApi.delete(`/api/nas/nfs/exports/${e.id}`).then(refresh), {
         loading: 'Deleting…', success: 'Export deleted', error: 'Failed',
       });
       setConfirm(null);
@@ -126,7 +126,7 @@ export default function ExportsPanel() {
   });
 
   const reload = async () => {
-    await withToast(axios.post('/api/nas/exports/reload').then(refresh), {
+    await withToast(nasApi.post('/api/nas/nfs/exports/reload').then(refresh), {
       loading: 'Reloading exports…', success: 'exportfs -ra OK', error: 'Failed',
     });
   };

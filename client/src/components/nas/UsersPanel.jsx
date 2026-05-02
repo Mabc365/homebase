@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Users, Plus, KeyRound, Trash2 } from 'lucide-react';
 import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, withToast } from './util';
 import { PanelError, SkeletonRows } from './PanelState';
+import { nasApi } from './api';
 
 function PasswordForm({ usernameLocked, initialUsername = '', onSubmit, onCancel }) {
   const [username, setUsername] = useState(initialUsername);
@@ -32,7 +32,7 @@ function PasswordForm({ usernameLocked, initialUsername = '', onSubmit, onCancel
       <div>
         <label className="text-xs font-mono text-slate-500 uppercase tracking-wider">Password</label>
         <input
-          type="password" value={password} required minLength={4}
+          type="password" value={password} required minLength={8}
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
         />
@@ -49,7 +49,7 @@ function PasswordForm({ usernameLocked, initialUsername = '', onSubmit, onCancel
 
 export default function UsersPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
-    () => axios.get('/api/nas/samba/users').then((r) => r.data),
+    () => nasApi.get('/api/nas/samba/users'),
   );
   const users = Array.isArray(data) ? data : [];
   const [adding, setAdding] = useState(false);
@@ -57,13 +57,13 @@ export default function UsersPanel() {
   const [confirm, setConfirm] = useState(null);
 
   const handleAdd = async ({ username, password }) => {
-    await withToast(axios.post('/api/nas/samba/users', { username, password }).then(refresh), {
+    await withToast(nasApi.post('/api/nas/samba/users', { username, password }).then(refresh), {
       loading: 'Adding user…', success: 'User added', error: 'Failed',
     });
     setAdding(false);
   };
   const handleReset = async ({ username, password }) => {
-    await withToast(axios.post(`/api/nas/samba/users/${encodeURIComponent(username)}/password`, { password }).then(refresh), {
+    await withToast(nasApi.post(`/api/nas/samba/users/${encodeURIComponent(username)}/password`, { password }).then(refresh), {
       loading: 'Updating password…', success: 'Password updated', error: 'Failed',
     });
     setResetting(null);
@@ -72,7 +72,7 @@ export default function UsersPanel() {
     title: `Delete Samba user "${user.username}"?`,
     message: 'The Linux account is not removed.',
     onConfirm: async () => {
-      await withToast(axios.delete(`/api/nas/samba/users/${encodeURIComponent(user.username)}`).then(refresh), {
+      await withToast(nasApi.delete(`/api/nas/samba/users/${encodeURIComponent(user.username)}`).then(refresh), {
         loading: 'Deleting…', success: 'User deleted', error: 'Failed',
       });
       setConfirm(null);

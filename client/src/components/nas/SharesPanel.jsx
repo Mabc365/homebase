@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Folder, Plus, Pencil, Trash2, Power } from 'lucide-react';
 import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, withToast } from './util';
 import { PanelError, SkeletonGrid } from './PanelState';
+import { nasApi } from './api';
 
 const emptyForm = {
   name: '', path: '', comment: '',
@@ -13,7 +13,14 @@ const emptyForm = {
 };
 
 function ShareForm({ initial, onSubmit, onCancel, isEdit }) {
-  const [form, setForm] = useState({ ...emptyForm, ...(initial || {}) });
+  const normalizedInitial = initial
+    ? {
+        ...initial,
+        browseable: initial.browseable ?? initial.browsable ?? true,
+        writable: initial.writable ?? !initial.readOnly,
+      }
+    : {};
+  const [form, setForm] = useState({ ...emptyForm, ...normalizedInitial });
   const [submitting, setSubmitting] = useState(false);
   const update = (patch) => setForm((f) => ({ ...f, ...patch }));
 
@@ -85,7 +92,7 @@ function ShareForm({ initial, onSubmit, onCancel, isEdit }) {
 
 export default function SharesPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
-    () => axios.get('/api/nas/shares').then((r) => r.data),
+    () => nasApi.get('/api/nas/samba/shares'),
   );
   const shares = Array.isArray(data) ? data : [];
   const [editing, setEditing] = useState(null); // share or {} for new
@@ -97,9 +104,9 @@ export default function SharesPanel() {
 
   const handleSubmit = async (form) => {
     const isEdit = Boolean(editing && editing.name);
-    const url = isEdit ? `/api/nas/shares/${encodeURIComponent(editing.name)}` : '/api/nas/shares';
+    const url = isEdit ? `/api/nas/samba/shares/${encodeURIComponent(editing.name)}` : '/api/nas/samba/shares';
     const method = isEdit ? 'put' : 'post';
-    await withToast(axios[method](url, form).then(refresh), {
+    await withToast(nasApi[method](url, form).then(refresh), {
       loading: isEdit ? 'Saving share…' : 'Creating share…',
       success: isEdit ? 'Share updated' : 'Share created',
       error: 'Failed',
@@ -109,8 +116,8 @@ export default function SharesPanel() {
 
   const toggle = async (share) => {
     await withToast(
-      axios.post(`/api/nas/shares/${encodeURIComponent(share.name)}/toggle`, { enabled: !share.available }).then(refresh),
-      { loading: 'Updating…', success: share.available ? 'Disabled' : 'Enabled', error: 'Failed' },
+      nasApi.post(`/api/nas/samba/shares/${encodeURIComponent(share.name)}/toggle`, { enabled: !share.enabled }).then(refresh),
+      { loading: 'Updating...', success: share.enabled ? 'Disabled' : 'Enabled', error: 'Failed' },
     );
   };
 
@@ -119,8 +126,8 @@ export default function SharesPanel() {
     message: `This removes the [${share.name}] section from smb.conf. The path on disk is not deleted.`,
     onConfirm: async () => {
       await withToast(
-        axios.delete(`/api/nas/shares/${encodeURIComponent(share.name)}`).then(refresh),
-        { loading: 'Deleting…', success: 'Share deleted', error: 'Failed' },
+        nasApi.delete(`/api/nas/samba/shares/${encodeURIComponent(share.name)}`).then(refresh),
+        { loading: 'Deleting...', success: 'Share deleted', error: 'Failed' },
       );
       setConfirm(null);
     },
@@ -152,20 +159,21 @@ export default function SharesPanel() {
                   <h3 className="text-white font-semibold truncate">{s.name}</h3>
                   <p className="text-xs font-mono text-slate-500 truncate">{s.path}</p>
                 </div>
-                <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded ${s.available ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
-                  {s.available ? 'on' : 'off'}
+                <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded ${s.enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                  {s.enabled ? 'on' : 'off'}
                 </span>
               </div>
               {s.comment && <p className="text-xs text-slate-400 truncate">{s.comment}</p>}
               <div className="flex flex-wrap gap-1.5 text-[10px] font-mono uppercase tracking-wider">
-                <span className={`px-1.5 py-0.5 rounded ${s.writable ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>{s.writable ? 'rw' : 'ro'}</span>
-                {s.browseable && <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">browseable</span>}
+                <span className={`px-1.5 py-0.5 rounded ${!s.readOnly ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>{!s.readOnly ? 'rw' : 'ro'}</span>
+                {s.browsable && <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">browsable</span>}
                 {s.guestOk && <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">guest</span>}
+                {s.validUsers && <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 truncate max-w-full">{s.validUsers}</span>}
               </div>
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>{s.activeConnections} connection{s.activeConnections === 1 ? '' : 's'}</span>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => toggle(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title={s.available ? 'Disable' : 'Enable'}>
+                  <button onClick={() => toggle(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title={s.enabled ? 'Disable' : 'Enable'}>
                     <Power size={14} />
                   </button>
                   <button onClick={() => startEdit(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title="Edit">

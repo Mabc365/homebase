@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Activity, X } from 'lucide-react';
 import Panel from './Panel';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, timeAgo, withToast } from './util';
 import { PanelError, SkeletonRows } from './PanelState';
+import { nasApi } from './api';
 
 function Tabs({ value, onChange, items }) {
   return (
@@ -47,8 +47,8 @@ function Table({ columns, rows, empty }) {
 
 export default function ConnectionsPanel() {
   const [tab, setTab] = useState('samba');
-  const samba = useAutoFetch(() => axios.get('/api/nas/samba/connections').then((r) => r.data));
-  const nfs = useAutoFetch(() => axios.get('/api/nas/nfs/connections').then((r) => r.data));
+  const samba = useAutoFetch(() => nasApi.get('/api/nas/samba/connections'));
+  const nfs = useAutoFetch(() => nasApi.get('/api/nas/nfs/connections'));
   const [confirm, setConfirm] = useState(null);
 
   const refresh = () => { samba.refresh(); nfs.refresh(); };
@@ -61,7 +61,7 @@ export default function ConnectionsPanel() {
     title: `Disconnect ${conn.user || conn.host}?`,
     message: `This sends SIGTERM to smbd PID ${conn.pid}. The client will see a dropped connection.`,
     onConfirm: async () => {
-      await withToast(axios.post(`/api/nas/samba/connections/${conn.pid}/disconnect`).then(samba.refresh), {
+      await withToast(nasApi.post(`/api/nas/samba/connections/${conn.pid}/disconnect`).then(samba.refresh), {
         loading: 'Disconnecting…', success: 'Disconnected', error: 'Failed',
       });
       setConfirm(null);
@@ -87,7 +87,8 @@ export default function ConnectionsPanel() {
 
   const nfsColumns = [
     { key: 'host', label: 'Client' },
-    { key: 'export', label: 'Export' },
+    { key: 'exportPath', label: 'Export' },
+    { key: 'status', label: 'Status' },
   ];
 
   return (

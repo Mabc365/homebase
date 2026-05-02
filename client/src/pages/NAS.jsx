@@ -7,9 +7,11 @@ import UsersPanel from '../components/nas/UsersPanel';
 import ServicesPanel from '../components/nas/ServicesPanel';
 import DrivesPanel from '../components/nas/DrivesPanel';
 import NetworkPanel from '../components/nas/NetworkPanel';
+import OverviewPanel from '../components/nas/OverviewPanel';
 import NasErrorBoundary from '../components/nas/NasErrorBoundary';
 
 const panels = [
+  ['Overview', OverviewPanel],
   ['Services', ServicesPanel],
   ['Network', NetworkPanel],
   ['Samba Shares', SharesPanel],

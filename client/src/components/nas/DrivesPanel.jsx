@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { HardDrive, Unplug, Plus } from 'lucide-react';
+import { HardDrive, Unplug, Plus, FolderPlus, Share2 } from 'lucide-react';
 import Panel from './Panel';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoFetch, formatBytes, withToast } from './util';
 import { PanelError, SkeletonGrid } from './PanelState';
+import { nasApi } from './api';
 
 function MountForm({ initial, onSubmit, onCancel }) {
   const [device, setDevice] = useState(initial?.device || '');
@@ -82,17 +82,17 @@ function UsageBar({ usage }) {
 
 export default function DrivesPanel() {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
-    () => axios.get('/api/nas/mounts').then((r) => r.data),
+    () => nasApi.get('/api/nas/drives'),
   );
   const [mounting, setMounting] = useState(null);
   const [confirm, setConfirm] = useState(null);
 
-  // Show only partitions and disks that have a filesystem (skip loop devices etc.)
+  // Show block filesystems plus discovered NAS folders such as /Xube/media.
   const mounts = Array.isArray(data) ? data : [];
-  const drives = mounts.filter((d) => (d.type === 'part' || d.type === 'disk') && d.fstype);
+  const drives = mounts.filter((d) => ((d.type === 'part' || d.type === 'disk') && d.fstype) || d.type === 'folder');
 
   const handleMount = async (form) => {
-    await withToast(axios.post('/api/nas/mounts/mount', form).then(refresh), {
+    await withToast(nasApi.post('/api/nas/mounts/mount', form).then(refresh), {
       loading: 'Mounting…', success: 'Mounted', error: 'Failed',
     });
     setMounting(null);
@@ -102,12 +102,44 @@ export default function DrivesPanel() {
     title: `Unmount ${drive.mountpoint}?`,
     message: `This unmounts ${drive.device} from ${drive.mountpoint}. Active writes may be interrupted.`,
     onConfirm: async () => {
-      await withToast(axios.post('/api/nas/mounts/unmount', { target: drive.mountpoint }).then(refresh), {
+      await withToast(nasApi.post('/api/nas/mounts/unmount', { target: drive.mountpoint }).then(refresh), {
         loading: 'Unmounting…', success: 'Unmounted', error: 'Failed',
       });
       setConfirm(null);
     },
   });
+
+  const shareNameFromPath = (mountpoint, prefix) => {
+    const name = String(mountpoint || '').split('/').filter(Boolean).pop() || 'share';
+    return `${prefix}_${name}`.replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 64);
+  };
+
+  const createSmbShare = async (drive) => {
+    await withToast(nasApi.post('/api/nas/samba/shares', {
+      name: shareNameFromPath(drive.mountpoint, 'smb'),
+      path: drive.mountpoint,
+      comment: `Created from ${drive.device || drive.path}`,
+      browsable: true,
+      readOnly: false,
+      guestOk: false,
+      enabled: true,
+    }), {
+      loading: 'Creating SMB share...',
+      success: 'SMB share created',
+      error: 'Failed',
+    });
+  };
+
+  const createNfsExport = async (drive) => {
+    await withToast(nasApi.post('/api/nas/nfs/exports', {
+      path: drive.mountpoint,
+      clients: [{ host: '*', options: ['rw', 'sync', 'no_subtree_check'] }],
+    }), {
+      loading: 'Creating NFS export...',
+      success: 'NFS export created',
+      error: 'Failed',
+    });
+  };
 
   return (
     <Panel
@@ -132,7 +164,7 @@ export default function DrivesPanel() {
             <article key={d.device} className="bg-slate-800/50 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="text-white font-mono text-sm truncate">{d.device}</h3>
+                  <h3 className="text-white font-mono text-sm truncate">{d.device || d.path}</h3>
                   <p className="text-[11px] text-slate-500 truncate">
                     {d.fstype}{d.label ? ` · ${d.label}` : ''}{d.mountpoint ? ` · ${d.mountpoint}` : ' · not mounted'}
                   </p>
@@ -144,18 +176,37 @@ export default function DrivesPanel() {
               <UsageBar usage={d.usage} />
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono text-slate-500 truncate">
-                  {d.uuid ? `uuid ${d.uuid.slice(0, 8)}…` : ''}
+                  {d.uuid ? `uuid ${d.uuid.slice(0, 8)}…` : d.type}
                 </span>
-                {d.mountpoint && (
-                  <button onClick={() => requestUnmount(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-red-500/10 text-red-400">
-                    <Unplug size={12} /> Unmount
-                  </button>
-                )}
-                {!d.mountpoint && (
-                  <button onClick={() => setMounting({ device: d.device, fstype: d.fstype })} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400">
-                    <Plus size={12} /> Mount
-                  </button>
-                )}
+                <div className="flex flex-wrap justify-end gap-1">
+                  {d.mountpoint && (
+                    <>
+                      <button onClick={() => createSmbShare(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400">
+                        <FolderPlus size={12} /> SMB
+                      </button>
+                      <button onClick={() => createNfsExport(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400">
+                        <Share2 size={12} /> NFS
+                      </button>
+                      <button
+                        onClick={() => requestUnmount(d)}
+                        disabled={!d.canUnmount}
+                        title={d.safetyNote || 'Unmount'}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-red-500/10 text-red-400 disabled:text-slate-600 disabled:hover:bg-transparent"
+                      >
+                        <Unplug size={12} /> Unmount
+                      </button>
+                    </>
+                  )}
+                  {!d.mountpoint && (
+                    <button
+                      onClick={() => setMounting({ device: d.device, fstype: d.fstype })}
+                      disabled={!d.canMount}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400 disabled:text-slate-600 disabled:hover:bg-transparent"
+                    >
+                      <Plus size={12} /> Mount
+                    </button>
+                  )}
+                </div>
               </div>
             </article>
           ))}
