@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  server:
+    build: ./server
+    container_name: homebase-server
+    restart: always
+    ports:
+      - "3001:3001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./server/homebase.db:/app/homebase.db
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - CLIENT_URL=${CLIENT_URL}
+    networks:
+      - homebase-network
+
+  client:
+    build: ./client
+    container_name: homebase-client
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    networks:
+      - homebase-network
+
+networks:
+  homebase-network:
+    driver: bridge
