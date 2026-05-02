@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const si = require('systeminformation');
 const Docker = require('dockerode');
-const pty = require('node-pty');
+const { Client: SSHClient } = require('ssh2');
 const Database = require('better-sqlite3');
 const path = require('path');
 
@@ -146,32 +146,100 @@ app.post('/api/links', authenticateToken, (req, res) => {
   res.json({ id: info.lastInsertRowid });
 });
 
-// WebSocket for Terminal (Token validation could be added here too)
+// WebSocket for SSH Terminal — client supplies host/port/user/password (or key)
 io.on('connection', (socket) => {
-  const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
-  const ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-color',
-    cols: 80,
-    rows: 30,
-    cwd: process.env.HOME,
-    env: process.env
-  });
+  let sshClient = null;
+  let sshStream = null;
 
-  ptyProcess.on('data', (data) => {
-    socket.emit('output', data);
+  const cleanup = () => {
+    try { sshStream && sshStream.end(); } catch (_) {}
+    try { sshClient && sshClient.end(); } catch (_) {}
+    sshStream = null;
+    sshClient = null;
+  };
+
+  socket.on('ssh-connect', (creds) => {
+    if (sshClient) {
+      socket.emit('ssh-status', { type: 'error', message: 'Already connected. Disconnect first.' });
+      return;
+    }
+
+    const { host, port, username, password, privateKey, passphrase, cols, rows } = creds || {};
+    if (!host || !username || (!password && !privateKey)) {
+      socket.emit('ssh-status', { type: 'error', message: 'Missing required SSH credentials.' });
+      return;
+    }
+
+    const client = new SSHClient();
+    sshClient = client;
+
+    client
+      .on('ready', () => {
+        socket.emit('ssh-status', { type: 'ready', message: `Connected to ${username}@${host}` });
+        client.shell({ term: 'xterm-color', cols: cols || 80, rows: rows || 30 }, (err, stream) => {
+          if (err) {
+            socket.emit('ssh-status', { type: 'error', message: err.message });
+            cleanup();
+            return;
+          }
+          sshStream = stream;
+          stream.on('data', (data) => socket.emit('output', data.toString('utf-8')));
+          stream.stderr.on('data', (data) => socket.emit('output', data.toString('utf-8')));
+          stream.on('close', () => {
+            socket.emit('ssh-status', { type: 'closed', message: 'Session closed.' });
+            cleanup();
+          });
+        });
+      })
+      .on('error', (err) => {
+        socket.emit('ssh-status', { type: 'error', message: err.message });
+        cleanup();
+      })
+      .on('end', () => {
+        socket.emit('ssh-status', { type: 'closed', message: 'Connection ended.' });
+        cleanup();
+      })
+      .on('close', () => {
+        socket.emit('ssh-status', { type: 'closed', message: 'Connection closed.' });
+        cleanup();
+      });
+
+    const connectOpts = {
+      host,
+      port: port || 22,
+      username,
+      readyTimeout: 15000,
+    };
+    if (password) connectOpts.password = password;
+    if (privateKey) {
+      connectOpts.privateKey = privateKey;
+      if (passphrase) connectOpts.passphrase = passphrase;
+    }
+
+    try {
+      client.connect(connectOpts);
+    } catch (err) {
+      socket.emit('ssh-status', { type: 'error', message: err.message });
+      cleanup();
+    }
   });
 
   socket.on('input', (data) => {
-    ptyProcess.write(data);
+    if (sshStream) sshStream.write(data);
   });
 
   socket.on('resize', (size) => {
-    ptyProcess.resize(size.cols, size.rows);
+    if (sshStream && size && size.cols && size.rows) {
+      try { sshStream.setWindow(size.rows, size.cols); } catch (_) {}
+    }
   });
 
-  socket.on('disconnect', () => {
-    ptyProcess.kill();
+  socket.on('ssh-disconnect', () => {
+    cleanup();
+    socket.emit('ssh-status', { type: 'closed', message: 'Disconnected.' });
   });
+
+  socket.on('disconnect', cleanup);
 });
 
 const PORT = process.env.PORT || 3001;

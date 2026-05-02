@@ -24,10 +24,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0d1117] p-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-blue-500 mb-2">Homebase</h1>
-          <p className="text-slate-400">Home Server Operations Center</p>
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <div className="text-center mb-8 sm:mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-500 mb-2">Homebase</h1>
+          <p className="text-sm sm:text-base text-slate-400">Home Server Operations Center</p>
         </div>
         
         <form onSubmit={handleLogin} className="space-y-6">
