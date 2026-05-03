@@ -8,9 +8,6 @@ const si = require('systeminformation');
 const Docker = require('dockerode');
 const { Client: SSHClient } = require('ssh2');
 const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
-const { spawn } = require('child_process');
 const nasRouter = require('./nasProxy');
 
 dotenv.config();
@@ -224,76 +221,6 @@ app.delete('/api/machines/:id', authenticateToken, (req, res) => {
   const info = db.prepare('DELETE FROM machines WHERE id = ?').run(req.params.id);
   if (!info.changes) return res.status(404).json({ error: 'Machine not found.' });
   res.json({ success: true });
-});
-
-let updateState = {
-  running: false,
-  lastStartedAt: null,
-  lastFinishedAt: null,
-  exitCode: null,
-  output: '',
-  error: null,
-};
-
-const updateCwd = process.env.HOMEBASE_UPDATE_CWD || path.resolve(__dirname, '..');
-const updateCommand = process.env.HOMEBASE_UPDATE_COMMAND || (
-  fs.existsSync(path.join(updateCwd, '.git')) ? 'git pull --ff-only' : ''
-);
-
-const getUpdateStatus = () => ({
-  ...updateState,
-  configured: Boolean(updateCommand),
-  cwd: updateCwd,
-});
-
-app.get('/api/system/update', authenticateToken, (req, res) => {
-  res.json(getUpdateStatus());
-});
-
-app.post('/api/system/update', authenticateToken, (req, res) => {
-  if (!updateCommand) {
-    return res.status(400).json({
-      error: 'Update command is not configured. Set HOMEBASE_UPDATE_COMMAND to enable one-click updates.',
-    });
-  }
-  if (updateState.running) {
-    return res.status(409).json({ error: 'An update is already running.' });
-  }
-
-  updateState = {
-    running: true,
-    lastStartedAt: new Date().toISOString(),
-    lastFinishedAt: null,
-    exitCode: null,
-    output: '',
-    error: null,
-  };
-
-  const child = spawn(updateCommand, {
-    cwd: updateCwd,
-    shell: true,
-    env: process.env,
-  });
-
-  const appendOutput = (chunk) => {
-    updateState.output = (updateState.output + chunk.toString()).slice(-12000);
-  };
-
-  child.stdout.on('data', appendOutput);
-  child.stderr.on('data', appendOutput);
-  child.on('error', (err) => {
-    updateState.running = false;
-    updateState.lastFinishedAt = new Date().toISOString();
-    updateState.error = err.message;
-  });
-  child.on('close', (code) => {
-    updateState.running = false;
-    updateState.lastFinishedAt = new Date().toISOString();
-    updateState.exitCode = code;
-    if (code !== 0 && !updateState.error) updateState.error = `Update exited with code ${code}.`;
-  });
-
-  res.status(202).json(getUpdateStatus());
 });
 
 io.use((socket, next) => {

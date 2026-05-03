@@ -520,6 +520,32 @@ async function listSambaUsers() {
     });
 }
 
+async function listLinuxUsers() {
+  const result = await run('getent', ['passwd'], { timeout: 8000 });
+  if (result.code !== 0) throw httpError(500, shellMessage('getent passwd', result));
+  const sambaSet = new Set();
+  try {
+    (await listSambaUsers()).forEach((u) => sambaSet.add(u.username));
+  } catch (_) {}
+  return result.stdout.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [username, , uidStr, , gecos, home, shell] = line.split(':');
+      return {
+        username,
+        uid: Number(uidStr) || 0,
+        fullName: (gecos || '').split(',')[0] || '',
+        home: home || '',
+        shell: shell || '',
+        sambaEnabled: sambaSet.has(username),
+        role: 'admin',
+      };
+    })
+    .filter((u) => u.uid >= 1000 && u.uid < 65534 && u.shell && !/(nologin|false)$/.test(u.shell))
+    .sort((a, b) => a.username.localeCompare(b.username));
+}
+
 async function assertLinuxUser(username) {
   const result = await run('getent', ['passwd', username], { timeout: 5000 });
   if (result.code !== 0) {
@@ -904,6 +930,7 @@ router.post('/shares/:name/toggle', asyncRoute(async (req, res) => {
   return router.handle(req, res);
 }));
 
+router.get('/users', asyncRoute(async (req, res) => ok(res, await listLinuxUsers())));
 router.get('/samba/users', asyncRoute(async (req, res) => ok(res, await listSambaUsers())));
 router.get('/samba/users/:username', asyncRoute(async (req, res) => {
   const username = validateUsername(req.params.username);
@@ -1029,6 +1056,29 @@ router.post('/services/:service/:action', asyncRoute(async (req, res) => {
 
 router.get('/drives', asyncRoute(async (req, res) => ok(res, await getDrives())));
 router.get('/mounts', asyncRoute(async (req, res) => ok(res, await getDrives())));
+
+router.get('/folders', asyncRoute(async (req, res) => {
+  const roots = SAFE_MOUNT_ROOTS.filter((root) => {
+    try { return fs.statSync(root).isDirectory(); } catch (_) { return false; }
+  });
+  const folders = [];
+  const seen = new Set();
+  for (const root of roots) {
+    try {
+      const entries = await fsp.readdir(root, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name.startsWith('.')) continue;
+        const full = path.posix.join(root, entry.name);
+        if (seen.has(full)) continue;
+        seen.add(full);
+        folders.push({ path: full, name: entry.name, root });
+      }
+    } catch (_) {}
+  }
+  folders.sort((a, b) => a.path.localeCompare(b.path));
+  ok(res, { roots, folders });
+}));
 
 router.post('/mounts/mount', asyncRoute(async (req, res) => {
   const device = String(req.body?.device || '').trim();

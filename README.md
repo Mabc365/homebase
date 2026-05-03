@@ -56,11 +56,6 @@ Homebase is a self-hosted operations center designed for high school students an
 - **CRUD Operations**: Add, edit, and delete links via a modal.
 - **Data Persistence**: Data is stored in the same SQLite database as the project board.
 
-### 6. System Updates
-- **One-click Update Button**: The System page can run a server-side update command and show recent command output.
-- **Git Pull Default**: When Homebase is run directly from a Git checkout, the default update command is `git pull --ff-only`.
-- **Custom Update Command**: Set `HOMEBASE_UPDATE_COMMAND` for Docker or custom deployments.
-
 ## Tech Stack
 
 -   **Frontend**: React, Vite, Tailwind CSS, xterm.js, @dnd-kit
@@ -102,22 +97,8 @@ Homebase is designed for self-hosting using Docker and Docker Compose.
     ```
     Edit the `.env` file with your specific values:
     -   `JWT_SECRET`: A strong, random string for JWT signing.
-    -   `HOMEBASE_UPDATE_CWD`: Optional working directory for the update command.
-    -   `HOMEBASE_UPDATE_COMMAND`: Optional command run by the System > Update button.
 
-    Example for a direct Git checkout:
-    ```bash
-    HOMEBASE_UPDATE_CWD=/path/to/homebase
-    HOMEBASE_UPDATE_COMMAND=git pull --ff-only
-    ```
-
-    Example for a Docker Compose deployment from the host project directory:
-    ```bash
-    HOMEBASE_UPDATE_CWD=/path/to/homebase
-    HOMEBASE_UPDATE_COMMAND=git pull --ff-only && docker compose up --build -d
-    ```
-
-    The update command runs with the same permissions as the Homebase server process. Saved SSH machine credentials are stored in the SQLite database used by Homebase, so keep the database file private.
+    Saved SSH machine credentials are stored in the SQLite database used by Homebase, so keep the database file private.
 
 3.  **Docker Socket Permissions**:
     The backend service needs access to the Docker daemon socket (`/var/run/docker.sock`) to manage containers. Ensure the user running Docker Compose has appropriate permissions. You might need to add your user to the `docker` group on your host machine:

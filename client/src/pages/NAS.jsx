@@ -5,8 +5,7 @@ import ExportsPanel from '../components/nas/ExportsPanel';
 import ConnectionsPanel from '../components/nas/ConnectionsPanel';
 import UsersPanel from '../components/nas/UsersPanel';
 import ServicesPanel from '../components/nas/ServicesPanel';
-import DrivesPanel from '../components/nas/DrivesPanel';
-import NetworkPanel from '../components/nas/NetworkPanel';
+import ImportFolderPanel from '../components/nas/ImportFolderPanel';
 import OverviewPanel from '../components/nas/OverviewPanel';
 import NasErrorBoundary from '../components/nas/NasErrorBoundary';
 import { useAutoFetch } from '../components/nas/util';
@@ -15,12 +14,11 @@ import { nasApi } from '../components/nas/api';
 const panels = [
   ['Overview', OverviewPanel],
   ['Services', ServicesPanel],
-  ['Network', NetworkPanel],
+  ['Import Folder', ImportFolderPanel],
   ['Samba Shares', SharesPanel],
   ['NFS Exports', ExportsPanel],
   ['Active Connections', ConnectionsPanel],
-  ['Samba Users', UsersPanel],
-  ['Drives & Mounts', DrivesPanel],
+  ['Users', UsersPanel],
 ];
 
 // Health response shape from the proxy:

@@ -32,7 +32,6 @@ export default function OverviewPanel({ panelLabel = 'Overview' }) {
   const { data, loading, error, refresh, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/overview'),
   );
-  const ipLabel = data?.network?.primaryIps?.length ? data.network.primaryIps.join(', ') : '-';
   const diagnostics = data?.diagnostics || data?.backend || {};
   const sourceLabel = data?.source?.kind === 'host-agent'
     ? 'Host NAS agent'
@@ -69,8 +68,6 @@ export default function OverviewPanel({ panelLabel = 'Overview' }) {
             <Metric label="NFS Exports" value={data.nfs?.exports ?? 0} tone="blue" />
             <Metric label="SMB Connections" value={data.samba?.activeConnections ?? 0} />
             <Metric label="NFS Clients" value={data.nfs?.activeClients ?? 0} />
-            <Metric label="Mounted Drives" value={`${data.drives?.mounted ?? 0}/${data.drives?.total ?? 0}`} />
-            <Metric label={data.network?.hostname || 'Host'} value={ipLabel} />
           </div>
           {data.source?.kind === 'missing-host-agent' && (
             <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
