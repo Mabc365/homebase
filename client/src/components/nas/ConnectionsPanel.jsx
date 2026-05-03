@@ -45,7 +45,7 @@ function Table({ columns, rows, empty }) {
   );
 }
 
-export default function ConnectionsPanel() {
+export default function ConnectionsPanel({ nasReadOnly = false }) {
   const [tab, setTab] = useState('samba');
   const samba = useAutoFetch(() => nasApi.get('/api/nas/samba/connections'));
   const nfs = useAutoFetch(() => nasApi.get('/api/nas/nfs/connections'));
@@ -78,7 +78,7 @@ export default function ConnectionsPanel() {
     {
       key: 'action', label: '',
       render: (r) => (
-        <button onClick={() => requestDisconnect(r)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400" title="Disconnect">
+        <button disabled={nasReadOnly} onClick={() => requestDisconnect(r)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400 disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Disconnect'}>
           <X size={14} />
         </button>
       ),

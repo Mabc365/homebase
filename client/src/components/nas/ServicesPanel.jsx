@@ -14,7 +14,7 @@ const STATE_COLORS = {
   deactivating: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
 };
 
-export default function ServicesPanel() {
+export default function ServicesPanel({ nasReadOnly = false }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/services'),
   );
@@ -79,13 +79,13 @@ export default function ServicesPanel() {
               {s.error && <span className="text-red-400"> · {s.error}</span>}
             </div>
             <div className="flex items-center gap-1">
-              <button onClick={() => guardedAction(s, 'start')} disabled={s.activeState === 'active'} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-emerald-500/10 hover:text-emerald-400 text-slate-300 disabled:opacity-40">
+              <button onClick={() => guardedAction(s, 'start')} disabled={nasReadOnly || s.activeState === 'active'} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'Start'} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-emerald-500/10 hover:text-emerald-400 text-slate-300 disabled:opacity-40">
                 <Play size={12} /> Start
               </button>
-              <button onClick={() => guardedAction(s, 'stop')} disabled={s.activeState !== 'active'} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-red-500/10 hover:text-red-400 text-slate-300 disabled:opacity-40">
+              <button onClick={() => guardedAction(s, 'stop')} disabled={nasReadOnly || s.activeState !== 'active'} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'Stop'} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-red-500/10 hover:text-red-400 text-slate-300 disabled:opacity-40">
                 <Square size={12} /> Stop
               </button>
-              <button onClick={() => guardedAction(s, 'restart')} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-blue-500/10 hover:text-blue-400 text-slate-300">
+              <button onClick={() => guardedAction(s, 'restart')} disabled={nasReadOnly} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'Restart'} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-blue-500/10 hover:text-blue-400 text-slate-300 disabled:opacity-40">
                 <RotateCw size={12} /> Restart
               </button>
             </div>

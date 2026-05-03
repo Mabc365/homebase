@@ -19,6 +19,10 @@ services:
       - CLIENT_URL=${CLIENT_URL}
       - HOMEBASE_UPDATE_CWD=${HOMEBASE_UPDATE_CWD}
       - HOMEBASE_UPDATE_COMMAND=${HOMEBASE_UPDATE_COMMAND}
+      - NAS_AGENT_URL=${NAS_AGENT_URL:-http://host.docker.internal:3015}
+      - NAS_AGENT_TOKEN=${NAS_AGENT_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - homebase-network
 

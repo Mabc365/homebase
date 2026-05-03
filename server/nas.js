@@ -36,6 +36,17 @@ const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/;
 const USER_RE = /^[A-Za-z_][A-Za-z0-9_.-]{0,31}\$?$/;
 const HOST_RE = /^(\*|[A-Za-z0-9_.:-]+|\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?|[A-Fa-f0-9:]+(?:\/\d{1,3})?)$/;
 const SAFE_PATH_RE = /^\/[^\0\r\n]*$/;
+const READ_ONLY = /^(1|true|yes)$/i.test(process.env.NAS_READ_ONLY || '');
+
+function isRunningInDocker() {
+  if (fs.existsSync('/.dockerenv')) return true;
+  try {
+    const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8');
+    return /docker|containerd|kubepods|podman/i.test(cgroup);
+  } catch (_) {
+    return false;
+  }
+}
 
 function ok(res, data, status = 200) {
   return res.status(status).json({ success: true, data });
@@ -61,6 +72,11 @@ function asyncRoute(fn) {
     }
   };
 }
+
+router.use((req, res, next) => {
+  if (!READ_ONLY || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  return fail(res, 405, 'NAS host agent is running in read-only mode. Write actions are not enabled yet.');
+});
 
 function httpError(statusCode, message, details) {
   const err = new Error(message);
@@ -757,6 +773,11 @@ async function getOverview() {
   const drives = value(5, []);
   const network = value(6, {});
   return {
+    source: {
+      kind: process.env.NAS_AGENT_MODE === 'host' ? 'host-agent' : 'direct-backend',
+      backendRunningInDocker: isRunningInDocker(),
+      containerDataSuppressed: false,
+    },
     services,
     samba: {
       status: services.find((service) => service.name === 'smbd')?.activeState || 'unknown',
@@ -796,6 +817,12 @@ router.get('/health', asyncRoute(async (req, res) => {
   }
   const helperCheck = await sudo([HELPER, 'health'], { timeout: 5000 });
   ok(res, {
+    source: {
+      kind: process.env.NAS_AGENT_MODE === 'host' ? 'host-agent' : 'direct-backend',
+      backendRunningInDocker: isRunningInDocker(),
+      readOnly: READ_ONLY,
+      hostname: require('os').hostname(),
+    },
     commands,
     configs,
     helper: {

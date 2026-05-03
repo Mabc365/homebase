@@ -80,7 +80,7 @@ function UsageBar({ usage }) {
   );
 }
 
-export default function DrivesPanel() {
+export default function DrivesPanel({ nasReadOnly = false }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/drives'),
   );
@@ -150,7 +150,7 @@ export default function DrivesPanel() {
       loading={loading}
       onRefresh={refresh}
       actions={(
-        <button onClick={() => setMounting({})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white">
+        <button onClick={() => setMounting({})} disabled={nasReadOnly} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'Mount'} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500">
           <Plus size={14} /> Mount
         </button>
       )}
@@ -181,15 +181,15 @@ export default function DrivesPanel() {
                 <div className="flex flex-wrap justify-end gap-1">
                   {d.mountpoint && (
                     <>
-                      <button onClick={() => createSmbShare(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400">
+                      <button disabled={nasReadOnly} onClick={() => createSmbShare(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400 disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Create SMB share'}>
                         <FolderPlus size={12} /> SMB
                       </button>
-                      <button onClick={() => createNfsExport(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400">
+                      <button disabled={nasReadOnly} onClick={() => createNfsExport(d)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400 disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Create NFS export'}>
                         <Share2 size={12} /> NFS
                       </button>
                       <button
                         onClick={() => requestUnmount(d)}
-                        disabled={!d.canUnmount}
+                        disabled={nasReadOnly || !d.canUnmount}
                         title={d.safetyNote || 'Unmount'}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-red-500/10 text-red-400 disabled:text-slate-600 disabled:hover:bg-transparent"
                       >
@@ -200,7 +200,7 @@ export default function DrivesPanel() {
                   {!d.mountpoint && (
                     <button
                       onClick={() => setMounting({ device: d.device, fstype: d.fstype })}
-                      disabled={!d.canMount}
+                      disabled={nasReadOnly || !d.canMount}
                       className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-blue-500/10 text-blue-400 disabled:text-slate-600 disabled:hover:bg-transparent"
                     >
                       <Plus size={12} /> Mount

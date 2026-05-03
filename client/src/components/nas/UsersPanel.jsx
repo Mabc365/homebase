@@ -47,7 +47,7 @@ function PasswordForm({ usernameLocked, initialUsername = '', onSubmit, onCancel
   );
 }
 
-export default function UsersPanel() {
+export default function UsersPanel({ nasReadOnly = false }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/samba/users'),
   );
@@ -88,7 +88,7 @@ export default function UsersPanel() {
       loading={loading}
       onRefresh={refresh}
       actions={(
-        <button onClick={() => setAdding(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white">
+        <button onClick={() => setAdding(true)} disabled={nasReadOnly} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'Add user'} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500">
           <Plus size={14} /> Add user
         </button>
       )}
@@ -105,10 +105,10 @@ export default function UsersPanel() {
                 <div className="text-[11px] font-mono text-slate-500">uid {u.uid ?? '—'}{u.fullName ? ` · ${u.fullName}` : ''}</div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setResetting(u)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title="Change password">
+                <button disabled={nasReadOnly} onClick={() => setResetting(u)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Change password'}>
                   <KeyRound size={14} />
                 </button>
-                <button onClick={() => requestDelete(u)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400" title="Delete">
+                <button disabled={nasReadOnly} onClick={() => requestDelete(u)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400 disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Delete'}>
                   <Trash2 size={14} />
                 </button>
               </div>

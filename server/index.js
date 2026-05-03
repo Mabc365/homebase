@@ -11,7 +11,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const nasRouter = require('./nas');
+const nasRouter = require('./nasProxy');
 
 dotenv.config();
 

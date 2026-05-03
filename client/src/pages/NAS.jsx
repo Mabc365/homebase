@@ -9,6 +9,8 @@ import DrivesPanel from '../components/nas/DrivesPanel';
 import NetworkPanel from '../components/nas/NetworkPanel';
 import OverviewPanel from '../components/nas/OverviewPanel';
 import NasErrorBoundary from '../components/nas/NasErrorBoundary';
+import { useAutoFetch } from '../components/nas/util';
+import { nasApi } from '../components/nas/api';
 
 const panels = [
   ['Overview', OverviewPanel],
@@ -22,6 +24,9 @@ const panels = [
 ];
 
 export default function NAS() {
+  const health = useAutoFetch(() => nasApi.get('/api/nas/health'), { intervalMs: 30000 });
+  const nasReadOnly = Boolean(health.data?.source?.readOnly);
+
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-3">
@@ -36,7 +41,7 @@ export default function NAS() {
 
       {panels.map(([title, Component]) => (
         <NasErrorBoundary key={title} title={title}>
-          <Component />
+          <Component nasHealth={health.data} nasReadOnly={nasReadOnly} />
         </NasErrorBoundary>
       ))}
     </div>

@@ -87,7 +87,7 @@ function ExportForm({ initial, onSubmit, onCancel, isEdit }) {
   );
 }
 
-export default function ExportsPanel() {
+export default function ExportsPanel({ nasReadOnly = false }) {
   const { data: exports, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/nfs/exports'),
   );
@@ -141,10 +141,10 @@ export default function ExportsPanel() {
       onRefresh={refresh}
       actions={(
         <>
-          <button onClick={reload} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100">
+          <button onClick={reload} disabled={nasReadOnly} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'Reload exports'} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 disabled:text-slate-500">
             <RotateCw size={14} /> Reload
           </button>
-          <button onClick={() => setEditing({})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white">
+          <button onClick={() => setEditing({})} disabled={nasReadOnly} title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'New export'} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500">
             <Plus size={14} /> New export
           </button>
         </>
@@ -174,10 +174,10 @@ export default function ExportsPanel() {
                 ))}
               </div>
               <div className="flex items-center justify-end gap-1 pt-1">
-                <button onClick={() => setEditing(e)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title="Edit">
+                <button disabled={nasReadOnly} onClick={() => setEditing(e)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Edit'}>
                   <Pencil size={14} />
                 </button>
-                <button onClick={() => requestDelete(e)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400" title="Delete">
+                <button disabled={nasReadOnly} onClick={() => requestDelete(e)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400 disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Delete'}>
                   <Trash2 size={14} />
                 </button>
               </div>

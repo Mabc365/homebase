@@ -90,7 +90,7 @@ function ShareForm({ initial, onSubmit, onCancel, isEdit }) {
   );
 }
 
-export default function SharesPanel() {
+export default function SharesPanel({ nasReadOnly = false }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/samba/shares'),
   );
@@ -142,7 +142,12 @@ export default function SharesPanel() {
       loading={loading}
       onRefresh={refresh}
       actions={(
-        <button onClick={startCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white">
+        <button
+          onClick={startCreate}
+          disabled={nasReadOnly}
+          title={nasReadOnly ? 'Host agent is running in read-only mode.' : 'New share'}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500"
+        >
           <Plus size={14} /> New share
         </button>
       )}
@@ -173,13 +178,13 @@ export default function SharesPanel() {
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>{s.activeConnections} connection{s.activeConnections === 1 ? '' : 's'}</span>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => toggle(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title={s.enabled ? 'Disable' : 'Enable'}>
+                  <button disabled={nasReadOnly} onClick={() => toggle(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : (s.enabled ? 'Disable' : 'Enable')}>
                     <Power size={14} />
                   </button>
-                  <button onClick={() => startEdit(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title="Edit">
+                  <button disabled={nasReadOnly} onClick={() => startEdit(s)} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Edit'}>
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => requestDelete(s)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400" title="Delete">
+                  <button disabled={nasReadOnly} onClick={() => requestDelete(s)} className="p-1.5 rounded hover:bg-red-500/10 text-red-400 disabled:text-slate-600 disabled:hover:bg-transparent" title={nasReadOnly ? 'Read-only mode' : 'Delete'}>
                     <Trash2 size={14} />
                   </button>
                 </div>

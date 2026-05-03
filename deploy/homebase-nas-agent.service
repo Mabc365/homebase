@@ -1,0 +1,17 @@
+[Unit]
+Description=Homebase NAS Host Agent
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/homebase-nas-agent
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3015
+Environment=BIND_HOST=0.0.0.0
+Environment=NAS_READ_ONLY=1
+
+[Install]
+WantedBy=multi-user.target
