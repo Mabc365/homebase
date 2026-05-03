@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { DownloadCloud, Play, RefreshCw } from 'lucide-react';
 
-const apiBase = `http://${window.location.hostname}:3001`;
+const apiBase = '';
 
 const System = () => {
   const [updateStatus, setUpdateStatus] = useState(null);

@@ -6,7 +6,7 @@ import { io } from 'socket.io-client';
 import { Key, Lock, Monitor, Plug, Plus, PowerOff, Server, Trash2, User } from 'lucide-react';
 import 'xterm/css/xterm.css';
 
-const apiBase = `http://${window.location.hostname}:3001`;
+const apiBase = '';
 
 const emptyForm = {
   name: '',

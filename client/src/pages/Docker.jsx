@@ -8,7 +8,7 @@ const Docker = () => {
 
   const fetchContainers = async () => {
     try {
-      const res = await axios.get(`http://${window.location.hostname}:3001/api/docker/containers`);
+      const res = await axios.get('/api/docker/containers');
       setContainers(res.data);
       setLoading(false);
     } catch (err) {
@@ -24,7 +24,7 @@ const Docker = () => {
 
   const handleAction = async (id, action) => {
     try {
-      await axios.post(`http://${window.location.hostname}:3001/api/docker/action`, { id, action });
+      await axios.post('/api/docker/action', { id, action });
       fetchContainers();
     } catch (err) {
       alert('Action failed: ' + err.message);

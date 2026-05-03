@@ -13,7 +13,7 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      const res = await axios.post(`http://${window.location.hostname}:3001/api/login`, { username, password });
+      const res = await axios.post('/api/login', { username, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/');
