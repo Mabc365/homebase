@@ -5,7 +5,7 @@ import { useAutoFetch } from './util';
 import { PanelError, SkeletonGrid } from './PanelState';
 import { nasApi } from './api';
 
-export default function NetworkPanel() {
+export default function NetworkPanel({ panelLabel = 'Network' }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/network'),
   );
@@ -24,7 +24,7 @@ export default function NetworkPanel() {
       loading={loading}
       onRefresh={refresh}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!data && !error && <SkeletonGrid count={3} columns="md:grid-cols-2 lg:grid-cols-3" />}
       {data && (
         <>

@@ -11,16 +11,28 @@ sudo apt update
 sudo apt install -y nodejs npm samba samba-common-bin nfs-kernel-server
 ```
 
-## 2. Service user
+## 2. One-shot installer (recommended)
+
+```bash
+sudo deploy/setup-nas-agent.sh
+```
+
+The installer creates the `homebase` system user, copies `nas-agent/` and the
+NAS router into `/opt/homebase-nas-agent`, runs `npm install --omit=dev`,
+installs the privileged helper at `/usr/local/sbin/homebase-nas-helper` plus
+the matching `/etc/sudoers.d/homebase-nas`, generates a random
+`NAS_AGENT_TOKEN` into `/etc/homebase/nas-agent.env`, and registers the
+systemd unit so it starts on boot. It prints the token at the end so you can
+paste it into the Docker backend's `.env`.
+
+Re-running the script keeps the existing token and just re-syncs the agent
+files and helper.
+
+## 3. Manual install (if you prefer)
 
 ```bash
 sudo useradd --system --home-dir /opt/homebase --shell /usr/sbin/nologin homebase
 sudo install -d -o homebase -g homebase /opt/homebase
-```
-
-## 3. Install the host NAS agent
-
-```bash
 sudo install -d -o homebase -g homebase /opt/homebase-nas-agent
 sudo cp -a nas-agent/* /opt/homebase-nas-agent/
 sudo cp server/nas.js /opt/homebase-nas-agent/nas-router.js
@@ -58,11 +70,10 @@ sudo systemctl enable --now homebase-nas-agent.service
 sudo journalctl -u homebase-nas-agent -f
 ```
 
-If you configure a token, add it to the service:
-
-```ini
-Environment=NAS_AGENT_TOKEN=replace-with-long-random-token
-```
+The unit reads `/etc/homebase/nas-agent.env` via `EnvironmentFile=`, so
+`NAS_AGENT_TOKEN` lives in that file (created by `setup-nas-agent.sh` with
+`0640 root:homebase` permissions). To rotate the token, edit the file and
+restart `homebase-nas-agent.service`.
 
 ## 6. Docker app configuration
 

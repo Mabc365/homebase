@@ -90,7 +90,7 @@ function ShareForm({ initial, onSubmit, onCancel, isEdit }) {
   );
 }
 
-export default function SharesPanel({ nasReadOnly = false }) {
+export default function SharesPanel({ nasReadOnly = false, panelLabel = 'Samba Shares' }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/samba/shares'),
   );
@@ -152,7 +152,7 @@ export default function SharesPanel({ nasReadOnly = false }) {
         </button>
       )}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!data && !error && <SkeletonGrid count={3} columns="md:grid-cols-2 lg:grid-cols-3" />}
       {data && shares.length === 0 && <p className="text-sm text-slate-500">No shares defined.</p>}
       {shares.length > 0 && (

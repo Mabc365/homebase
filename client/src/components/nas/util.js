@@ -86,6 +86,18 @@ export function getErrorMessage(error) {
   return body?.error || error?.message || String(error || 'Unknown error');
 }
 
+// True when the error came from the Docker backend reporting that the host NAS
+// agent isn't reachable. The proxy returns 503 with details.nasAgentReachable=false.
+export function isAgentOfflineError(error) {
+  if (!error) return false;
+  const status = error?.response?.status;
+  const body = error?.response?.data;
+  const details = body?.details;
+  if (details && typeof details === 'object' && details.nasAgentReachable === false) return true;
+  if (status === 503 && typeof body?.error === 'string' && /host nas agent/i.test(body.error)) return true;
+  return false;
+}
+
 // Wrap a promise-returning action with toast feedback.
 export async function withToast(promise, { loading, success, error }) {
   return toast.promise(

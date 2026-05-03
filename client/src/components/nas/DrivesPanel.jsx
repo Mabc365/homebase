@@ -80,7 +80,7 @@ function UsageBar({ usage }) {
   );
 }
 
-export default function DrivesPanel({ nasReadOnly = false }) {
+export default function DrivesPanel({ nasReadOnly = false, panelLabel = 'Drives & Mounts' }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/drives'),
   );
@@ -155,7 +155,7 @@ export default function DrivesPanel({ nasReadOnly = false }) {
         </button>
       )}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!data && !error && <SkeletonGrid count={2} columns="md:grid-cols-2" />}
       {drives.length === 0 && data && <p className="text-sm text-slate-500">No filesystems detected.</p>}
       {drives.length > 0 && (

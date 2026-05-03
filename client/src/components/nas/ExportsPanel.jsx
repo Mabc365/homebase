@@ -87,7 +87,7 @@ function ExportForm({ initial, onSubmit, onCancel, isEdit }) {
   );
 }
 
-export default function ExportsPanel({ nasReadOnly = false }) {
+export default function ExportsPanel({ nasReadOnly = false, panelLabel = 'NFS Exports' }) {
   const { data: exports, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/nfs/exports'),
   );
@@ -150,7 +150,7 @@ export default function ExportsPanel({ nasReadOnly = false }) {
         </>
       )}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!exports && !error && <SkeletonGrid count={2} columns="md:grid-cols-2" />}
       {exports && exportList.length === 0 && <p className="text-sm text-slate-500">No exports defined.</p>}
       {exportList.length > 0 && (

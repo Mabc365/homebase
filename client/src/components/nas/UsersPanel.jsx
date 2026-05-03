@@ -47,7 +47,7 @@ function PasswordForm({ usernameLocked, initialUsername = '', onSubmit, onCancel
   );
 }
 
-export default function UsersPanel({ nasReadOnly = false }) {
+export default function UsersPanel({ nasReadOnly = false, panelLabel = 'Samba Users' }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/samba/users'),
   );
@@ -93,7 +93,7 @@ export default function UsersPanel({ nasReadOnly = false }) {
         </button>
       )}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!data && !error && <SkeletonRows count={4} />}
       {data && users.length === 0 && <p className="text-sm text-slate-500">No Samba users defined.</p>}
       {users.length > 0 && (

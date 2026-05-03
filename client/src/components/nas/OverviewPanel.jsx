@@ -28,7 +28,7 @@ function stateTone(state) {
   return 'slate';
 }
 
-export default function OverviewPanel() {
+export default function OverviewPanel({ panelLabel = 'Overview' }) {
   const { data, loading, error, refresh, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/overview'),
   );
@@ -56,7 +56,7 @@ export default function OverviewPanel() {
         </button>
       )}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!data && !error && <SkeletonGrid count={8} columns="sm:grid-cols-2 lg:grid-cols-4" />}
       {data && (
         <div className="space-y-3">

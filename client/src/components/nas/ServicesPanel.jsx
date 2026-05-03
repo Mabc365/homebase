@@ -14,7 +14,7 @@ const STATE_COLORS = {
   deactivating: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
 };
 
-export default function ServicesPanel({ nasReadOnly = false }) {
+export default function ServicesPanel({ nasReadOnly = false, panelLabel = 'Services' }) {
   const { data, loading, refresh, error, lastUpdated } = useAutoFetch(
     () => nasApi.get('/api/nas/services'),
   );
@@ -57,7 +57,7 @@ export default function ServicesPanel({ nasReadOnly = false }) {
       loading={loading}
       onRefresh={refresh}
     >
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {!data && !error && <SkeletonGrid count={3} columns="md:grid-cols-3" />}
       {data && services.length === 0 && <p className="text-sm text-slate-500">No NAS services reported.</p>}
       {services.length > 0 && (

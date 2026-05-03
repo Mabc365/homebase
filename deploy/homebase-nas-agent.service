@@ -4,14 +4,14 @@ After=network.target
 
 [Service]
 Type=simple
+User=homebase
+Group=homebase
 WorkingDirectory=/opt/homebase-nas-agent
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
-Environment=PORT=3015
-Environment=BIND_HOST=0.0.0.0
-Environment=NAS_READ_ONLY=1
+EnvironmentFile=-/etc/homebase/nas-agent.env
 
 [Install]
 WantedBy=multi-user.target

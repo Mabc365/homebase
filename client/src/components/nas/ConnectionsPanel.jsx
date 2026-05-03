@@ -45,7 +45,7 @@ function Table({ columns, rows, empty }) {
   );
 }
 
-export default function ConnectionsPanel({ nasReadOnly = false }) {
+export default function ConnectionsPanel({ nasReadOnly = false, panelLabel = 'Active Connections' }) {
   const [tab, setTab] = useState('samba');
   const samba = useAutoFetch(() => nasApi.get('/api/nas/samba/connections'));
   const nfs = useAutoFetch(() => nasApi.get('/api/nas/nfs/connections'));
@@ -107,7 +107,7 @@ export default function ConnectionsPanel({ nasReadOnly = false }) {
           { value: 'nfs', label: `NFS (${nfs.data?.length || 0})` },
         ]}
       />
-      {error && <PanelError error={error} onRetry={refresh} className="mb-3" />}
+      {error && <PanelError error={error} onRetry={refresh} className="mb-3" panelLabel={panelLabel} />}
       {tab === 'samba' && !samba.data && !samba.error && <SkeletonRows count={4} />}
       {tab === 'samba' && (samba.data || samba.error) && (
         <Table
